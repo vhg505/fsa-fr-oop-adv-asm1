@@ -6,10 +6,24 @@ This assignment focuses on transforming a legacy order processing system from a 
 
 ## Current System Architecture
 
-The existing system consists of two classes:
+The existing system consists of two classes located in `src/main/java/com/ecommerce/`:
 
-- **Main**: Entry point that instantiates and calls the OrderService
-- **OrderService**: A monolithic class that handles all order processing responsibilities
+- **Main.java**: Entry point that instantiates and calls the OrderService
+- **OrderService.java**: A monolithic class that handles all order processing responsibilities
+
+### Current Project Structure
+
+```
+assignment01/
+├── src/
+│   └── main/
+│       └── java/
+│           └── com/
+│               └── ecommerce/
+│                   ├── Main.java
+│                   └── OrderService.java
+└── assignment01.iml
+```
 
 ### The God Class Problem
 
@@ -234,7 +248,9 @@ What are the key nouns in your domain? Orders, Products, Customers, Payments, Di
 
 **Consider Value Objects**
 
-Some concepts are defined by their values rather than identity. Money amounts, addresses, email addresses, and phone numbers are examples. These should be immutable objects that encapsulate validation and behavior.
+Some concepts are defined by their values rather than identity. Email addresses and phone numbers are examples. These could be simple String fields in your entities, or you could create value objects if you need validation and behavior.
+
+For this assignment, keeping prices as primitive double values is perfectly acceptable. Only create additional value object classes if they add clear value through encapsulation of validation or business logic.
 
 **Benefits of Domain Models**
 
@@ -487,39 +503,248 @@ Multiple developers can work on different components simultaneously without conf
 
 Changes are less likely to have unexpected side effects. The impact of any change is limited to a specific component and its direct dependencies.
 
+## Recommended Project Structure After Refactoring
+
+Organize your refactored code into logical packages that reflect the separation of concerns:
+
+```
+assignment01/
+├── src/
+│   └── main/
+│       └── java/
+│           └── com/
+│               └── ecommerce/
+│                   ├── Main.java
+│                   │
+│                   ├── model/              # Domain models (entities and value objects)
+│                   │   ├── Order.java
+│                   │   ├── Product.java
+│                   │   ├── Customer.java
+│                   │   ├── OrderItem.java
+│                   │   └── OrderStatus.java (enum)
+│                   │
+│                   ├── service/            # Business logic services
+│                   │   ├── OrderService.java (refactored)
+│                   │   ├── PricingService.java
+│                   │   └── InventoryService.java
+│                   │
+│                   ├── discount/           # Discount strategies
+│                   │   ├── DiscountStrategy.java (interface)
+│                   │   ├── ElectronicsDiscountStrategy.java
+│                   │   ├── ClothingDiscountStrategy.java
+│                   │   └── NoDiscountStrategy.java
+│                   │
+│                   ├── payment/            # Payment processing
+│                   │   ├── PaymentProcessor.java (interface)
+│                   │   ├── PaymentResult.java
+│                   │   ├── CreditCardPaymentProcessor.java
+│                   │   ├── PayPalPaymentProcessor.java
+│                   │   └── BankTransferPaymentProcessor.java
+│                   │
+│                   ├── notification/       # Notification services
+│                   │   ├── NotificationService.java (interface)
+│                   │   ├── EmailNotificationService.java
+│                   │   ├── SMSNotificationService.java
+│                   │   └── CompositeNotificationService.java
+│                   │
+│                   ├── repository/         # Data access (optional)
+│                   │   ├── OrderRepository.java (interface)
+│                   │   ├── ProductRepository.java (interface)
+│                   │   ├── InMemoryOrderRepository.java
+│                   │   └── InMemoryProductRepository.java
+│                   │
+│                   └── util/               # Cross-cutting concerns
+│                       ├── Logger.java (interface)
+│                       ├── ConsoleLogger.java
+│                       ├── AnalyticsService.java (interface)
+│                       └── SimpleAnalyticsService.java
+└── assignment01.iml
+```
+
+### Package Organization Guidelines
+
+**model/** - Contains domain entities and value objects
+- Replace Object[] arrays with proper classes
+- Encapsulate validation logic within domain objects
+- Use enums for fixed sets of values (OrderStatus, PaymentMethod, ProductCategory)
+- Keep it simple - use primitive double for prices unless you need currency-specific behavior
+
+**service/** - Contains business logic orchestration
+- Refactored OrderService should coordinate between other services
+- Each service has a single, well-defined responsibility
+- Services depend on interfaces, not concrete implementations
+
+**discount/** - Contains discount calculation strategies
+- Each discount rule is a separate class
+- All implement the DiscountStrategy interface
+- New discount rules can be added without modifying existing code
+
+**payment/** - Contains payment processing implementations
+- Each payment method is a separate class
+- All implement the PaymentProcessor interface
+- Payment logic is isolated and testable
+
+**notification/** - Contains notification delivery implementations
+- Each notification channel is a separate class
+- All implement the NotificationService interface
+- Consider a composite pattern to support multiple channels
+
+**repository/** - Contains data access abstractions (optional but recommended)
+- Separates data storage concerns from business logic
+- Makes it easy to switch from in-memory to database storage later
+- Improves testability through mock repositories
+
+**util/** - Contains cross-cutting concerns
+- Logging, analytics, and other infrastructure services
+- Keep these separate from core business logic
+
 ## Approach to Refactoring
 
 ### Phase 1: Understand the Current System
 
-Before making any changes, thoroughly understand what the system currently does. Run it, trace through the code, document the flow. You cannot refactor what you don't understand.
+Before making any changes, thoroughly understand what the system currently does:
+
+1. Run the Main.java class and observe the output
+2. Read through OrderService.java with the detailed comments
+3. Trace the flow of the createOrder() method
+4. Identify all the responsibilities (they're marked in the comments)
+5. Document the current behavior - this is your baseline
+
+You cannot refactor what you don't understand.
 
 ### Phase 2: Create a Vision
 
-Design the target architecture. Sketch out the classes, interfaces, and relationships you want to achieve. This vision will guide your refactoring steps.
+Design the target architecture before writing code:
+
+1. Sketch a class diagram showing the main components and their relationships
+2. List the interfaces you'll need and their key methods
+3. Identify which classes will depend on which interfaces
+4. Plan your package structure using the recommended structure above
+5. Document your design decisions and rationale
+
+This vision will guide your refactoring steps and help you stay focused.
 
 ### Phase 3: Refactor Incrementally
 
-Don't try to refactor everything at once. Make small, safe changes. After each change, verify that the system still works. Build confidence through incremental progress.
+Don't try to refactor everything at once. Follow this suggested order:
 
-### Phase 4: Extract One Responsibility at a Time
+**Step 1: Create Domain Models (model/ package)**
+- Start with Product.java - replace Object[] product representation
+- Create Order.java, OrderItem.java, Customer.java
+- Create enums: OrderStatus, PaymentMethod, ProductCategory
+- Use simple types (String, double, int) for basic properties
+- Update OrderService to use these models (this will break things temporarily)
 
-Choose one responsibility to extract. Create the new class or classes, move the relevant code, update the dependencies, and test. Then move on to the next responsibility.
+**Step 2: Extract Discount Logic (discount/ package)**
+- Create DiscountStrategy interface
+- Implement ElectronicsDiscountStrategy, ClothingDiscountStrategy, NoDiscountStrategy
+- Update OrderService to use discount strategies instead of if-else chains
+- Test that discounts still work correctly
 
-### Phase 5: Introduce Abstractions
+**Step 3: Extract Payment Processing (payment/ package)**
+- Create PaymentProcessor interface and PaymentResult class
+- Implement CreditCardPaymentProcessor, PayPalPaymentProcessor, BankTransferPaymentProcessor
+- Update OrderService to use payment processors
+- Test that payments still work correctly
 
-As you extract responsibilities, introduce interfaces to define contracts. This sets the stage for the Open/Closed Principle and Dependency Inversion.
+**Step 4: Extract Notification Logic (notification/ package)**
+- Create NotificationService interface
+- Implement EmailNotificationService and SMSNotificationService
+- Consider CompositeNotificationService to send multiple notifications
+- Update OrderService to use notification services
+- Test that notifications still work correctly
 
-### Phase 6: Apply Dependency Injection
+**Step 5: Extract Cross-Cutting Concerns (util/ package)**
+- Create Logger interface and ConsoleLogger implementation
+- Create AnalyticsService interface and implementation
+- Inject these into OrderService
+- Test that logging and analytics still work
 
-Once you have abstractions, refactor the code to use dependency injection. Classes should receive their dependencies rather than creating them.
+**Step 6: Apply Dependency Injection**
+- Modify OrderService constructor to accept all dependencies as parameters
+- Update Main.java to create and wire all dependencies
+- Consider using a simple factory or builder pattern for complex wiring
 
-### Phase 7: Replace Primitives with Domain Models
+**Step 7: Optional - Add Repository Layer (repository/ package)**
+- Create OrderRepository and ProductRepository interfaces
+- Implement in-memory versions
+- Move data storage concerns out of OrderService
 
-Systematically replace Object arrays and primitive types with proper domain classes. This improves type safety and makes the code more expressive.
+After each step, run Main.java and verify the system still produces the same output.
 
-### Phase 8: Verify and Validate
+### Phase 4: Verify and Validate
 
-After refactoring, thoroughly test the system. Verify that all functionality still works. Check that the design meets your vision. Reflect on what you've learned.
+After completing the refactoring:
+
+1. Run Main.java and compare output with the original system
+2. Verify all functionality still works (order creation, cancellation, shipping)
+3. Check that your code follows the recommended package structure
+4. Review each class to ensure it has a single responsibility
+5. Verify that you can add new features without modifying existing code
+6. Reflect on what you've learned about each SOLID principle
+
+## Specific Implementation Guidelines
+
+### Creating Domain Models
+
+When replacing Object[] arrays with domain classes:
+
+**Before (OrderService.java):**
+```
+Object[] product = {"P001", "Laptop", 999.99, 50, "ELECTRONICS"};
+String id = (String) product[0];           // Unsafe casting
+Double price = (Double) product[2];        // Magic index
+```
+
+**After (Product.java concept):**
+- Create a Product class with proper fields: id, name, price, stock, category
+- Use appropriate types: String for id/name, double for price, int for stock
+- Add getters and validation in the constructor
+- Consider making it immutable (final fields, no setters) or provide controlled setters
+
+### Designing Interfaces
+
+When creating interfaces for strategies and services:
+
+**Key Principles:**
+- Keep interfaces focused and cohesive (ISP)
+- Define clear contracts with meaningful method names
+- Consider what parameters are needed and what should be returned
+- Think about error handling (return types, exceptions)
+
+**Example thinking process for DiscountStrategy:**
+- What does a discount strategy need to know? (Product, price, quantity?)
+- What should it return? (Discounted price? Discount amount? Percentage?)
+- Should it be able to determine if it applies? (isApplicable method?)
+
+### Implementing Dependency Injection
+
+**In Main.java:**
+- Create all concrete implementations (payment processors, notification services, etc.)
+- Wire them together by passing them to constructors
+- This is where you decide which implementations to use
+- Main becomes the "composition root" of your application
+
+**In OrderService.java:**
+- Accept dependencies through constructor parameters
+- Depend on interfaces, not concrete classes
+- Store dependencies as private final fields
+- Use the dependencies in your methods instead of creating objects directly
+
+### Testing Your Refactoring
+
+**Behavioral Verification:**
+- The refactored system should produce the same output as the original
+- Run both versions and compare results
+- Test edge cases (out of stock, payment failure, etc.)
+
+**Design Verification:**
+- Can you add a new discount rule without modifying existing classes?
+- Can you add a new payment method without modifying OrderService?
+- Can you test discount logic without involving payment processing?
+- Can you swap notification implementations easily?
+
+If you answer "yes" to these questions, you've successfully applied SOLID principles.
 
 ## Learning Objectives
 
@@ -536,15 +761,81 @@ By completing this assignment, you will:
 
 ## Evaluation Criteria
 
-Your refactored system should demonstrate:
+Your refactored system will be evaluated on:
 
-- Clear separation of responsibilities with focused, cohesive classes
-- Proper application of all five SOLID principles
-- Extensibility through abstractions and polymorphism
-- Use of domain models instead of primitive data structures
-- Dependency injection for loose coupling
-- Clean, understandable code structure
-- Thoughtful design decisions with clear rationale
+### Code Organization (20%)
+- Follows the recommended package structure
+- Classes are in appropriate packages
+- Clear separation between layers (model, service, strategy, etc.)
+- Logical grouping of related components
+
+### SOLID Principles Application (40%)
+- **SRP**: Each class has a single, well-defined responsibility
+- **OCP**: New features can be added without modifying existing code
+- **LSP**: Implementations are properly substitutable for their abstractions
+- **ISP**: Interfaces are focused and role-specific
+- **DIP**: Dependencies on abstractions, not concrete classes
+
+### Domain Modeling (15%)
+- Object[] arrays replaced with proper domain classes
+- Appropriate use of enums for fixed value sets
+- Value objects for concepts like Money and Address
+- Proper encapsulation and validation
+
+### Design Quality (15%)
+- Appropriate use of design patterns (Strategy, Dependency Injection, etc.)
+- Clean, readable code with meaningful names
+- Proper error handling
+- No code duplication
+
+### Functionality (10%)
+- System produces the same output as the original
+- All features work correctly (create, cancel, ship orders)
+- Edge cases handled properly
+
+### Documentation (Optional Bonus)
+- Clear comments explaining design decisions
+- README section describing your refactoring approach
+- Justification for key architectural choices
+
+## Submission Guidelines
+
+Your submission should include:
+
+1. **Complete source code** organized according to the recommended package structure
+2. **Working Main.java** that demonstrates all functionality
+3. **Brief design document** (optional) explaining:
+   - Your refactoring approach and order of steps
+   - Key design decisions and trade-offs
+   - How each SOLID principle is applied
+   - Challenges faced and how you solved them
+
+## Common Pitfalls to Avoid
+
+### Over-Engineering
+- Don't create unnecessary abstractions
+- Keep it simple - solve the problems at hand
+- Every interface and class should have a clear purpose
+
+### Under-Refactoring
+- Don't stop at just creating new classes
+- Ensure proper use of interfaces and dependency injection
+- Make sure the design is actually extensible
+
+### Breaking Functionality
+- Test frequently as you refactor
+- Make small, incremental changes
+- Keep the system working at each step
+
+### Ignoring the Comments
+- The existing code has detailed comments pointing out problems
+- Use these as a guide for what needs to be refactored
+- Each comment identifies a specific SOLID violation to address
+
+### Poor Naming
+- Use clear, descriptive names for classes and methods
+- Follow Java naming conventions
+- Names should reveal intent and purpose
 
 ## Conclusion
 

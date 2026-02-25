@@ -42,7 +42,7 @@ public class OrderService {
         // - Violates Single Responsibility: Service shouldn't manage test data
         // - Makes testing difficult: Can't easily inject different product catalogs
         // - Not production-ready: Real systems load data from databases
-        // VIOLATES: Dependency Inversion (should depend on a ProductRepository abstraction)
+        // VIOLATES: Dependency Inversion (should depend on a IProductRepository abstraction)
         
         // Initialize sample products: [id, name, price, stock, category]
         // PROBLEM: Magic array indices - what does each position mean?
