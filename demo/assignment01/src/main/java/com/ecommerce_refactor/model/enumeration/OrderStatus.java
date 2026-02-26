@@ -1,5 +1,9 @@
 package com.ecommerce_refactor.model.enumeration;
 
 public enum OrderStatus {
-    CONFIRMED, CANCELLED, SHIPPED
+    PENDING,      // Order created, stock reserved, awaiting confirmation
+    CONFIRMED,    // Order confirmed, stock committed
+    CANCELLED,    // Order cancelled
+    SHIPPED       // Order shipped
 }
+
